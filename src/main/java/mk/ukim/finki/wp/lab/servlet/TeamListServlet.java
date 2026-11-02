@@ -37,4 +37,18 @@ public class TeamListServlet extends HttpServlet {
         context.setVariable("teams", teamService.listTeams());
         springTemplateEngine.process("listTeams.html", context, resp.getWriter());
     }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        try {
+            Long teamId = Long.parseLong(req.getParameter("teamId"));
+            teamService.deleteById(teamId);
+        } catch (IllegalArgumentException exception) {
+            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid team");
+            return;
+        }
+
+        // po brisenjeto se vrakjame na listata preku novo GET baranje
+        resp.sendRedirect(req.getContextPath() + "/teams");
+    }
 }

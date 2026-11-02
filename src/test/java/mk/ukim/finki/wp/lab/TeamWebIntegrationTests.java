@@ -147,6 +147,57 @@ class TeamWebIntegrationTests {
         assertFalse(page.contains("<script>"));
     }
 
+    @Test
+    void deletesSelectedTeamPreservesPlayersAndAllowsReassignment() throws Exception {
+        post("1", "p1");
+        String details = get("/teamDetails?teamId=1").body();
+        assertTrue(details.contains("action=\"/teams\" method=\"POST\""));
+        assertTrue(details.contains("name=\"teamId\" value=\"1\""));
+        assertTrue(details.contains("Delete team"));
+
+        HttpResponse<String> response = deleteTeam("1");
+        assertEquals(302, response.statusCode());
+        assertEquals("/teams", location(response));
+        assertEquals(4, DataHolder.teams.size());
+        assertTrue(DataHolder.teams.stream().noneMatch(team -> team.getId().equals(1L)));
+        assertEquals(10, DataHolder.players.size());
+
+        // osvezuvanje na listata ne brise drug tim
+        for (int refresh = 0; refresh < 2; refresh++) {
+            HttpResponse<String> teams = get(location(response));
+            assertEquals(200, teams.statusCode());
+            assertEquals(4, radioCount(teams.body()));
+            assertFalse(teams.body().contains("Vardar"));
+        }
+        assertEquals("/teams", location(get("/teamDetails?teamId=1")));
+        assertEquals("/teams", location(get("/players?teamId=1")));
+
+        // igracot od izbrisaniot tim ostanuva dostapen za drug tim
+        assertEquals("/teamDetails?teamId=2", location(post("2", "p1")));
+        assertTrue(get("/teamDetails?teamId=2").body().contains("Marko Markovski"));
+    }
+
+    @Test
+    void invalidDeleteDoesNotRemoveAnyTeamOrPlayer() throws Exception {
+        post("1", "p1");
+        for (String teamId : new String[]{null, "", "abc", "999"}) {
+            assertEquals(400, deleteTeam(teamId).statusCode());
+            assertEquals(5, DataHolder.teams.size());
+            assertEquals(10, DataHolder.players.size());
+            assertEquals(1, DataHolder.teams.getFirst().getPlayers().size());
+        }
+        // GET samo ja prikazuva stranata, ne brise tim
+        assertEquals(5, radioCount(get("/teams?teamId=1").body()));
+    }
+
+    private HttpResponse<String> deleteTeam(String teamId) throws Exception {
+        String body = teamId == null ? "" : "teamId=" + encode(teamId);
+        return client.send(HttpRequest.newBuilder(URI.create(baseUrl + "/teams"))
+                        .header("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8")
+                        .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
+                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+    }
+
     private HttpResponse<String> get(String path) throws Exception {
         return client.send(HttpRequest.newBuilder(URI.create(baseUrl + path)).GET().build(),
                 HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));

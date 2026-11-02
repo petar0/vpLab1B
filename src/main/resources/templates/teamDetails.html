@@ -37,6 +37,11 @@
     </ul>
     <!-- ako listata e prazna, ja prikazuvame ovaa poraka -->
     <p th:if="${#lists.isEmpty(team.players)}">No players yet</p>
+    <!-- id-to na timot go isprakjame do doPost vo TeamListServlet -->
+    <form th:action="@{/teams}" method="POST">
+        <input type="hidden" name="teamId" th:value="${team.id}">
+        <button type="submit">Delete team</button>
+    </form>
     <p>
         <a th:href="@{/players(teamId=${team.id})}">Add another player</a> |
         <a th:href="@{/teams}">Back to teams</a>

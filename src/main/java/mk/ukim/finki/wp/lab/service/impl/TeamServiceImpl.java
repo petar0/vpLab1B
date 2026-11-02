@@ -33,6 +33,13 @@ public class TeamServiceImpl implements TeamService {
     }
 
     @Override
+    public void deleteById(Long id) {
+        // prvo proveruvame dali timot postoi, pa go briseme
+        findById(id);
+        teamRepository.deleteById(id);
+    }
+
+    @Override
     public Team addPlayerToTeam(Long teamId, String playerId) {
         // 1. Gi naogjame timot i igracot
         Team team = findById(teamId);
